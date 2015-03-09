@@ -1,11 +1,26 @@
 {
-    "name": "cviebrock/eloquent-replaceable",
-    "license": "MIT",
-    "authors": [
-        {
-            "name": "Colin Viebrock",
-            "email": "colin@viebrock.ca"
-        }
-    ],
-    "require": {}
+	"name": "cviebrock/eloquent-replaceable",
+	"license": "MIT",
+	"authors": [
+		{
+			"name": "Colin Viebrock",
+			"email": "colin@viebrock.ca"
+		}
+	],
+	"require": {
+		"php": ">=5.4",
+		"illuminate/redis": "~4.2",
+		"illuminate/console": "~4.2",
+		"illuminate/database": "~4.2",
+		"illuminate/support": "~4.2"
+	},
+	"require-dev": {
+		"phpunit/phpunit": "~4.0"
+	},
+	"autoload": {
+		"psr-4": {
+			"Cviebrock\\EloquentReplaceable\\": "src"
+		}
+	},
+	"minimum-stability": "dev"
 }
