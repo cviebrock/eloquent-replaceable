@@ -21,7 +21,7 @@
 	},
 	"autoload": {
 		"psr-4": {
-			"Cviebrock\\EloquentReplaceable\\": "src/"
+			"Cviebrock\\EloquentReplaceable\\": "src"
 		}
 	},
 	"minimum-stability": "dev"

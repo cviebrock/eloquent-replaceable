@@ -1,6 +1,12 @@
 <?php namespace Cviebrock\EloquentReplaceable\Traits;
 
+use Illuminate\Support\Collection;
+
+
 trait ReplaceableImp {
+
+	protected $replacementCache = [];
+
 
 	/**
 	 * Overload Eloquent getAttribute() method to look for and handle replacements.
@@ -8,12 +14,12 @@ trait ReplaceableImp {
 	 * @param $key
 	 * @return mixed
 	 */
-	public function getAttribute($key) {
+	public function doReplacements($key) {
 
-		$value = parent::getAttribute($key);
+		$value = $this->getAttribute($key);
 
-		if (array_get($this->getReplaceableAttributes(), $key)) {
-			$value = $this->processReplacements($value);
+		if ($replacements = array_get($this->getReplaceables(), $key)) {
+			$value = $this->processReplacements($value, $replacements);
 		}
 
 		return $value;
@@ -21,17 +27,19 @@ trait ReplaceableImp {
 
 
 	/**
-	 * Get array of attributes that can contain placeholders.
+	 * Array of model attributes that should be checked for placeholder replacements.
 	 *
 	 * @return array
 	 */
-	public function getReplaceableAttributes() {
+	public function getReplaceables() {
 		return [];
 	}
 
 
 	/**
 	 * Get array of replacement strings/functions for each of the placeholders.
+	 * This is a function instead of a class property so you can use closures
+	 * as replacement values.
 	 *
 	 * @return array
 	 */
@@ -40,9 +48,50 @@ trait ReplaceableImp {
 	}
 
 
-	protected function processReplacements() {
+	/**
+	 * Process the template with the given replacement values/functions.
+	 *
+	 * @param $value string
+	 * @param $replacements array
+	 * @return string
+	 */
+	protected function processReplacements($value, $replacements) {
 
-		$keys = preg_match('/:(.*+)\b/', $key);
-		dd($keys);
+		// sort by reverse length to prevent placeholder collision
+		$replacements = (new Collection($replacements))->sortBy(function ($r) {
+			return mb_strlen($r) * -1;
+		});
+
+		foreach ($replacements as $placeholder) {
+
+			$replacement = $this->getReplacementValue($placeholder);
+
+			$value = str_replace(':' . $placeholder, $replacement, $value);
+		}
+
+		return $value;
+	}
+
+
+	/**
+	 * Get the replacement value for a given placeholder
+	 *
+	 * @param $placeholder string
+	 * @return mixed
+	 */
+	protected function getReplacementValue($placeholder) {
+		if (array_key_exists($placeholder, $this->replacementCache)) {
+			$replacement = $this->replacementCache[$placeholder];
+
+			return $replacement;
+		} else {
+			$replacement = array_get($this->getReplacements(), $placeholder);
+			if (is_callable($replacement)) {
+				$replacement = call_user_func($replacement, $this);
+			}
+			$this->replacementCache[$placeholder] = $replacement;
+
+			return $replacement;
+		}
 	}
 }
