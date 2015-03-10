@@ -1,25 +1,44 @@
 <?php namespace Cviebrock\EloquentReplaceable\Traits;
 
-use Illuminate\Support\Collection;
+use Config;
 
 
 trait ReplaceableImp {
 
-	protected $replacementCache = [];
+	/**
+	 * The internal cache of the attribute->placeholder array for this model.
+	 *
+	 * @var null|array
+	 */
+	protected $placeholdersCache;
+
+	/**
+	 * The internal cache of the placeholder->replacement array for this model.
+	 *
+	 * @var null|array
+	 */
+	protected $replacementsCache;
+
+	/**
+	 * The internal cache of the placeholder->value array for this model.
+	 *
+	 * @var null|array
+	 */
+	protected $replacementValuesCache = [];
 
 
 	/**
-	 * Overload Eloquent getAttribute() method to look for and handle replacements.
+	 * Returns the attribute with all replacements done.
 	 *
-	 * @param $key
-	 * @return mixed
+	 * @param $attribute
+	 * @return string
 	 */
-	public function doReplacements($key) {
+	public function doReplacements($attribute) {
 
-		$value = $this->getAttribute($key);
+		$value = $this->getAttribute($attribute);
 
-		if ($replacements = array_get($this->getReplaceables(), $key)) {
-			$value = $this->processReplacements($value, $replacements);
+		if ($placeholders = $this->getPlaceholders($attribute)) {
+			$value = $this->processReplacements($value, $placeholders);
 		}
 
 		return $value;
@@ -27,49 +46,78 @@ trait ReplaceableImp {
 
 
 	/**
-	 * Array of model attributes that should be checked for placeholder replacements.
+	 * Returns an array of placeholders that should be replaced for the given
+	 * attribute.
 	 *
+	 * @param $attribute
 	 * @return array
 	 */
-	public function getReplaceables() {
-		return [];
-	}
+	public function getPlaceholders($attribute) {
 
+		$placeholders = array_get($this->getAllPlaceholders(), $attribute);
+		if ($placeholders == '*') {
+			$placeholders = array_keys($this->getAllReplacements());
+			$this->placeholdersCache[$attribute] = $placeholders;
+		}
 
-	/**
-	 * Get array of replacement strings/functions for each of the placeholders.
-	 * This is a function instead of a class property so you can use closures
-	 * as replacement values.
-	 *
-	 * @return array
-	 */
-	public function getReplacements() {
-		return [];
+		return $placeholders;
 	}
 
 
 	/**
 	 * Process the template with the given replacement values/functions.
 	 *
-	 * @param $value string
-	 * @param $replacements array
+	 * @param $template string
+	 * @param $placeholders array
 	 * @return string
 	 */
-	protected function processReplacements($value, $replacements) {
+	protected function processReplacements($template, $placeholders) {
 
 		// sort by reverse length to prevent placeholder collision
-		$replacements = (new Collection($replacements))->sortBy(function ($r) {
-			return mb_strlen($r) * -1;
+		usort($placeholders, function ($a, $b) {
+			return mb_strlen($a) < mb_strlen($b);
 		});
 
-		foreach ($replacements as $placeholder) {
+		foreach ($placeholders as $placeholder) {
 
 			$replacement = $this->getReplacementValue($placeholder);
 
-			$value = str_replace(':' . $placeholder, $replacement, $value);
+			$template = str_replace(':' . $placeholder, $replacement, $template);
 		}
 
-		return $value;
+		return $template;
+	}
+
+
+	/**
+	 * Get the attribute=>placeholders array for this model.
+	 *
+	 * @return array
+	 */
+	protected function getAllPlaceholders() {
+		if (!is_array($this->placeholdersCache)) {
+			$modelPlaceholders = Config::get('replaceable::' . get_called_class() . '.attributes', []);
+			$globalPlaceholders = Config::get('replaceable::*.attributes', []);
+			$this->placeholdersCache = array_merge($globalPlaceholders, $modelPlaceholders);
+		}
+
+		return $this->placeholdersCache;
+	}
+
+
+	/**
+	 * Get the placeholder=>replacement array for this model.
+	 *
+	 * @return array
+	 */
+	protected function getAllReplacements() {
+		if (!is_array($this->replacementsCache)) {
+			$modelReplacements = Config::get('replaceable::' . get_called_class() . '.replacements', []);
+			$globalReplacements = Config::get('replaceable::*.replacements', []);
+			$this->replacementsCache = array_merge($globalReplacements, $modelReplacements);
+		}
+
+		return $this->replacementsCache;
 	}
 
 
@@ -80,18 +128,16 @@ trait ReplaceableImp {
 	 * @return mixed
 	 */
 	protected function getReplacementValue($placeholder) {
-		if (array_key_exists($placeholder, $this->replacementCache)) {
-			$replacement = $this->replacementCache[$placeholder];
-
-			return $replacement;
-		} else {
-			$replacement = array_get($this->getReplacements(), $placeholder);
-			if (is_callable($replacement)) {
-				$replacement = call_user_func($replacement, $this);
-			}
-			$this->replacementCache[$placeholder] = $replacement;
-
-			return $replacement;
+		if (array_key_exists($placeholder, $this->replacementValuesCache)) {
+			return $this->replacementValuesCache[$placeholder];
 		}
+
+		$value = array_get($this->getAllReplacements(), $placeholder);
+		if (is_callable($value)) {
+			$value = call_user_func($value, $this);
+		}
+		$this->replacementValuesCache[$placeholder] = $value;
+
+		return $value;
 	}
 }
