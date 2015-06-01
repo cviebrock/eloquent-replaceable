@@ -19,7 +19,9 @@ class ServiceProvider extends BaseProvider {
 	 * @return void
 	 */
 	public function boot() {
-		$this->package('cviebrock/eloquent-replaceable', 'replaceable', __DIR__);
+		$configPath = __DIR__ . '/../config/replaceable.php';
+		$this->publishes([$configPath => config_path('replaceable.php')]);
+		$this->mergeConfigFrom($configPath, 'replaceable');
 	}
 
 
