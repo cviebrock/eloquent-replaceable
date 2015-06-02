@@ -96,8 +96,8 @@ trait ReplaceableImp {
 	 */
 	protected function getAllPlaceholders() {
 		if (!is_array($this->placeholdersCache)) {
-			$modelPlaceholders = Config::get('replaceable::' . get_called_class() . '.attributes', []);
-			$globalPlaceholders = Config::get('replaceable::*.attributes', []);
+			$modelPlaceholders = Config::get('replaceable.' . get_called_class() . '.attributes', []);
+			$globalPlaceholders = Config::get('replaceable.*.attributes', []);
 			$this->placeholdersCache = array_merge($globalPlaceholders, $modelPlaceholders);
 		}
 
@@ -112,8 +112,8 @@ trait ReplaceableImp {
 	 */
 	protected function getAllReplacements() {
 		if (!is_array($this->replacementsCache)) {
-			$modelReplacements = Config::get('replaceable::' . get_called_class() . '.replacements', []);
-			$globalReplacements = Config::get('replaceable::*.replacements', []);
+			$modelReplacements = Config::get('replaceable.' . get_called_class() . '.replacements', []);
+			$globalReplacements = Config::get('replaceable.*.replacements', []);
 			$this->replacementsCache = array_merge($globalReplacements, $modelReplacements);
 		}
 
