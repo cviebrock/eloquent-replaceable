@@ -1,5 +1,7 @@
 # eloquent-replaceable
 
+> Note: The `0.x` branch and any `0.*.*` releases are for Laravel 4.  Use the `master` branch for Laravel 5.
+
 
 ## Installation
 
